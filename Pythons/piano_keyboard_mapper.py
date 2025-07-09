@@ -125,30 +125,37 @@ class PianoKeyboardMapper:
         """CSV 파일에서 MIDI 이벤트를 로드"""
         print(f"Loading MIDI events from {self.csv_file_path}...")
         
-        with open(self.csv_file_path, 'r', encoding='utf-8') as file:
-            csv_reader = csv.reader(file)
-            for row in csv_reader:
-                if len(row) >= 6:
-                    track = int(row[0])
-                    timestamp = int(row[1])
-                    event_type = row[2].strip()
-                    
-                    if event_type in ['Note_on_c', 'Note_off_c']:
-                        channel = int(row[3])
-                        note = int(row[4])
-                        velocity = int(row[5])
+        try:
+            with open(self.csv_file_path, 'r', encoding='utf-8') as file:
+                csv_reader = csv.reader(file)
+                for row in csv_reader:
+                    if len(row) >= 6:
+                        track = int(row[0])
+                        timestamp = int(row[1])
+                        event_type = row[2].strip()
                         
-                        self.events.append({
-                            'track': track,
-                            'timestamp': timestamp,
-                            'type': event_type,
-                            'note': note,
-                            'velocity': velocity
-                        })
-        
-        # 타임스탬프 순으로 정렬
-        self.events.sort(key=lambda x: x['timestamp'])
-        print(f"Loaded {len(self.events)} note events")
+                        if event_type in ['Note_on_c', 'Note_off_c']:
+                            channel = int(row[3])
+                            note = int(row[4])
+                            velocity = int(row[5])
+                            
+                            self.events.append({
+                                'track': track,
+                                'timestamp': timestamp,
+                                'type': event_type,
+                                'note': note,
+                                'velocity': velocity
+                            })
+            
+            # 타임스탬프 순으로 정렬
+            self.events.sort(key=lambda x: x['timestamp'])
+            print(f"Loaded {len(self.events)} note events")
+        except FileNotFoundError:
+            print(f"Error: Could not find file '{self.csv_file_path}'")
+            raise
+        except Exception as e:
+            print(f"Error loading CSV file: {e}")
+            raise
     
     def get_key_for_note(self, note):
         """MIDI 노트에 해당하는 키보드 키 반환"""
@@ -305,25 +312,36 @@ class PianoKeyboardMapper:
 
 
 def main():
+    import os
     print("=== Piano MIDI to Keyboard Mapper ===")
     
     # CSV 파일 경로 입력받기
     print("\nEnter MIDI CSV file path:")
-    print("(Press Enter for default: SamuraiHeart.csv)")
+    print("(Press Enter for default: SamuraiHeart_Piano.csv from CSVs folder)")
+    print("(Just enter filename if it's in CSVs folder, or provide full path)")
     csv_input = input("CSV file: ").strip()
     
     if not csv_input:
-        csv_file = "SamuraiHeart.csv"
+        csv_file = os.path.join("..", "CSVs", "SamuraiHeart_Piano.csv")
         print(f"Using default file: {csv_file}")
     else:
-        csv_file = csv_input
+        # 입력된 파일이 절대 경로가 아니라면 CSVs 폴더에서 찾기
+        if not os.path.isabs(csv_input):
+            csv_file = os.path.join("..", "CSVs", csv_input)
+        else:
+            csv_file = csv_input
         print(f"Using file: {csv_file}")
     
     # 파일 존재 확인
-    import os
     if not os.path.exists(csv_file):
         print(f"Error: Could not find file '{csv_file}'")
-        print("Make sure the file exists in the current directory or provide the full path.")
+        print("Make sure the file exists in the CSVs folder or provide the full path.")
+        print(f"Available CSV files in CSVs folder:")
+        csv_folder = os.path.join("..", "CSVs")
+        if os.path.exists(csv_folder):
+            for file in os.listdir(csv_folder):
+                if file.endswith('.csv'):
+                    print(f"  - {file}")
         return
     
     print("\nChoose mapping mode:")
@@ -421,7 +439,7 @@ def main():
             
     except FileNotFoundError:
         print(f"Error: Could not find file '{csv_file}'")
-        print("Make sure the file is in the same directory as this script.")
+        print("Make sure the file is in the CSVs folder or provide the correct path.")
     except Exception as e:
         print(f"Error: {e}")
 
